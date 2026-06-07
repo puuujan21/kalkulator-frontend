@@ -1,49 +1,152 @@
 import React, { useState } from 'react';
 
-type TypUmowy = 'uop' | 'b2b' | 'zlecenie';
+type TypUmowy = 'uop' | 'zlecenie' | 'b2b';
+type TypB2B = 'liniowy' | 'ryczalt';
+type TypZUSB2B = 'normalny' | 'preferencyjny' | 'ulga_na_start';
+
+type Skladka = { nazwa: string; kwota: number };
+type Wynik = { netto: number; skladki: Skladka[]; uwagi: string[] };
+
+const ZUS_PRAC = { emerytalna: 0.0976, rentowa: 0.015, chorobowa: 0.0245 };
+const ZUS_B2B_NORMALNY = 1648;
+const ZUS_B2B_PREFERENCYJNY = 403;
+const KWOTA_WOLNA = 30000 / 12;
+const ULGA_MIESIECZNA = KWOTA_WOLNA * 0.12;
+const KOSZTY_UOP = 250;
+
+const STAWKI_RYCZALTU = [
+  { label: 'IT / programowanie (12%)', value: 0.12 },
+  { label: 'Wolne zawody (17%)', value: 0.17 },
+  { label: 'Usługi (8.5%)', value: 0.085 },
+  { label: 'Usługi techniczne (5.5%)', value: 0.055 },
+  { label: 'Handel (3%)', value: 0.03 },
+];
+
+function obliczUoP(brutto: number, ulgaMlodych: boolean): Wynik {
+  const em = brutto * ZUS_PRAC.emerytalna;
+  const ren = brutto * ZUS_PRAC.rentowa;
+  const cho = brutto * ZUS_PRAC.chorobowa;
+  const zusSum = em + ren + cho;
+  const zdrowotna = (brutto - zusSum) * 0.09;
+
+  let podatek = 0;
+  if (!ulgaMlodych) {
+    const podstawa = Math.max(brutto - zusSum - KOSZTY_UOP, 0);
+    podatek = Math.max(podstawa * 0.12 - ULGA_MIESIECZNA, 0);
+  }
+
+  const netto = brutto - zusSum - zdrowotna - podatek;
+  return {
+    netto,
+    skladki: [
+      { nazwa: 'Emerytalna (9.76%)', kwota: em },
+      { nazwa: 'Rentowa (1.5%)', kwota: ren },
+      { nazwa: 'Chorobowa (2.45%)', kwota: cho },
+      { nazwa: 'Zdrowotna (9%)', kwota: zdrowotna },
+      { nazwa: 'Zaliczka PIT (12%)', kwota: podatek },
+    ],
+    uwagi: ulgaMlodych
+      ? ['Ulga dla młodych aktywna — brak PIT do limitu 85 528 zł/rok']
+      : [],
+  };
+}
+
+function obliczZlecenie(brutto: number, studentDoLat26: boolean): Wynik {
+  if (studentDoLat26) {
+    return {
+      netto: brutto,
+      skladki: [],
+      uwagi: ['Student lub osoba do 26 lat — brak ZUS i brak PIT'],
+    };
+  }
+
+  const em = brutto * ZUS_PRAC.emerytalna;
+  const ren = brutto * ZUS_PRAC.rentowa;
+  const cho = brutto * ZUS_PRAC.chorobowa;
+  const zusSum = em + ren + cho;
+  const zdrowotna = (brutto - zusSum) * 0.09;
+  const koszty = brutto * 0.2;
+  const podatek = Math.max((brutto - zusSum - koszty) * 0.12 - ULGA_MIESIECZNA, 0);
+  const netto = brutto - zusSum - zdrowotna - podatek;
+
+  return {
+    netto,
+    skladki: [
+      { nazwa: 'Emerytalna (9.76%)', kwota: em },
+      { nazwa: 'Rentowa (1.5%)', kwota: ren },
+      { nazwa: 'Chorobowa (2.45%)', kwota: cho },
+      { nazwa: 'Zdrowotna (9%)', kwota: zdrowotna },
+      { nazwa: 'Zaliczka PIT (12%)', kwota: podatek },
+    ],
+    uwagi: [],
+  };
+}
+
+function obliczB2BLiniowy(brutto: number, typZUS: TypZUSB2B): Wynik {
+  const zus = typZUS === 'normalny' ? ZUS_B2B_NORMALNY : typZUS === 'preferencyjny' ? ZUS_B2B_PREFERENCYJNY : 0;
+  const dochod = Math.max(brutto - zus, 0);
+  const zdrowotna = Math.max(dochod * 0.049, 229);
+  const odliczenieZdrowotnej = Math.min(zdrowotna, 850);
+  const podstawaPodatku = Math.max(dochod - odliczenieZdrowotnej, 0);
+  const podatek = podstawaPodatku * 0.19;
+  const netto = brutto - zus - zdrowotna - podatek;
+
+  return {
+    netto,
+    skladki: [
+      ...(zus > 0 ? [{ nazwa: `ZUS (${typZUS})`, kwota: zus }] : []),
+      { nazwa: 'Składka zdrowotna (4.9%)', kwota: zdrowotna },
+      { nazwa: 'Podatek liniowy (19%)', kwota: podatek },
+    ],
+    uwagi: [
+      typZUS === 'ulga_na_start'
+        ? 'Ulga na start — brak składek ZUS przez pierwsze 6 miesięcy'
+        : typZUS === 'preferencyjny'
+        ? 'ZUS preferencyjny — pierwsze 2 lata działalności'
+        : 'ZUS normalny',
+    ],
+  };
+}
+
+function obliczB2BRyczalt(brutto: number, typZUS: TypZUSB2B, stawka: number): Wynik {
+  const zus = typZUS === 'normalny' ? ZUS_B2B_NORMALNY : typZUS === 'preferencyjny' ? ZUS_B2B_PREFERENCYJNY : 0;
+  const zdrowotna = brutto < 5000 ? 462 : brutto < 25000 ? 769 : 1385;
+  const podatek = brutto * stawka;
+  const netto = brutto - zus - zdrowotna - podatek;
+
+  return {
+    netto,
+    skladki: [
+      ...(zus > 0 ? [{ nazwa: `ZUS (${typZUS})`, kwota: zus }] : []),
+      { nazwa: 'Składka zdrowotna (ryczałtowa)', kwota: zdrowotna },
+      { nazwa: `Podatek ryczałtowy (${(stawka * 100).toFixed(1)}%)`, kwota: podatek },
+    ],
+    uwagi: [
+      typZUS === 'ulga_na_start'
+        ? 'Ulga na start — brak składek ZUS przez pierwsze 6 miesięcy'
+        : typZUS === 'preferencyjny'
+        ? 'ZUS preferencyjny — pierwsze 2 lata działalności'
+        : 'ZUS normalny',
+    ],
+  };
+}
 
 function Kalkulator() {
   const [brutto, setBrutto] = useState('');
   const [typUmowy, setTypUmowy] = useState<TypUmowy>('uop');
+  const [ulgaMlodych, setUlgaMlodych] = useState(false);
+  const [studentDoLat26, setStudentDoLat26] = useState(false);
+  const [typB2B, setTypB2B] = useState<TypB2B>('liniowy');
+  const [typZUSB2B, setTypZUSB2B] = useState<TypZUSB2B>('normalny');
+  const [stawkaRyczaltu, setStawkaRyczaltu] = useState(0.12);
 
-  const oblicz = () => {
+  const oblicz = (): Wynik | null => {
     const kwota = parseFloat(brutto);
-    if (!kwota) return null;
-
-    if (typUmowy === 'uop') {
-      const emerytalna = kwota * 0.0976;
-      const rentowa = kwota * 0.015;
-      const chorobowa = kwota * 0.0245;
-      const zusLacznie = emerytalna + rentowa + chorobowa;
-      const podstawaZdrowotna = kwota - zusLacznie;
-      const zdrowotna = podstawaZdrowotna * 0.09;
-      const podstawaPodatku = kwota - zusLacznie - 300;
-      const podatek = Math.max(podstawaPodatku * 0.12 - 300, 0);
-      const netto = kwota - zusLacznie - zdrowotna - podatek;
-
-      return { netto, zusLacznie, zdrowotna, podatek };
-    }
-
-    if (typUmowy === 'b2b') {
-      const zus = 1600;
-      const zdrowotna = kwota * 0.049;
-      const podatek = (kwota - zus - zdrowotna) * 0.19;
-      const netto = kwota - zus - zdrowotna - podatek;
-      return { netto, zusLacznie: zus, zdrowotna, podatek };
-    }
-
-    if (typUmowy === 'zlecenie') {
-      const emerytalna = kwota * 0.0976;
-      const rentowa = kwota * 0.015;
-      const chorobowa = kwota * 0.0245;
-      const zusLacznie = emerytalna + rentowa + chorobowa;
-      const zdrowotna = (kwota - zusLacznie) * 0.09;
-      const podatek = (kwota - zusLacznie) * 0.5 * 0.12;
-      const netto = kwota - zusLacznie - zdrowotna - podatek;
-      return { netto, zusLacznie, zdrowotna, podatek };
-    }
-
-    return null;
+    if (!kwota || kwota <= 0) return null;
+    if (typUmowy === 'uop') return obliczUoP(kwota, ulgaMlodych);
+    if (typUmowy === 'zlecenie') return obliczZlecenie(kwota, studentDoLat26);
+    if (typB2B === 'liniowy') return obliczB2BLiniowy(kwota, typZUSB2B);
+    return obliczB2BRyczalt(kwota, typZUSB2B, stawkaRyczaltu);
   };
 
   const wynik = oblicz();
@@ -64,21 +167,83 @@ function Kalkulator() {
         <label>Typ umowy</label>
         <select value={typUmowy} onChange={(e) => setTypUmowy(e.target.value as TypUmowy)}>
           <option value="uop">Umowa o pracę</option>
-          <option value="b2b">B2B</option>
           <option value="zlecenie">Umowa zlecenie</option>
+          <option value="b2b">B2B</option>
         </select>
+
+        {typUmowy === 'uop' && (
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={ulgaMlodych}
+              onChange={(e) => setUlgaMlodych(e.target.checked)}
+            />
+            Ulga dla młodych (do 26 lat, do 85 528 zł/rok)
+          </label>
+        )}
+
+        {typUmowy === 'zlecenie' && (
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={studentDoLat26}
+              onChange={(e) => setStudentDoLat26(e.target.checked)}
+            />
+            Student lub osoba do 26 lat (brak ZUS i PIT)
+          </label>
+        )}
+
+        {typUmowy === 'b2b' && (
+          <>
+            <label>Forma opodatkowania</label>
+            <select value={typB2B} onChange={(e) => setTypB2B(e.target.value as TypB2B)}>
+              <option value="liniowy">Podatek liniowy (19%)</option>
+              <option value="ryczalt">Ryczałt ewidencjonowany</option>
+            </select>
+
+            {typB2B === 'ryczalt' && (
+              <>
+                <label>Stawka ryczałtu</label>
+                <select
+                  value={stawkaRyczaltu}
+                  onChange={(e) => setStawkaRyczaltu(parseFloat(e.target.value))}
+                >
+                  {STAWKI_RYCZALTU.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            <label>Składki ZUS</label>
+<select value={typZUSB2B} onChange={(e) => setTypZUSB2B(e.target.value as TypZUSB2B)}>
+  <option value="ulga_na_start">Ulga na start (~0 zł, pierwsze 6 mies.)</option>
+  <option value="preferencyjny">Preferencyjny (~403 zł, pierwsze 2 lata)</option>
+  <option value="normalny">Normalny (~1 648 zł)</option>
+</select>
+          </>
+        )}
       </div>
 
       {wynik && (
         <div className="wyniki">
           <div className="wynik-główny">
-            <span>Netto</span>
+            <span>Netto na konto</span>
             <strong>{wynik.netto.toFixed(2)} zł</strong>
           </div>
+
+          {wynik.uwagi.length > 0 && (
+            <div className="uwagi">
+              {wynik.uwagi.map((u, i) => <p key={i}>ℹ️ {u}</p>)}
+            </div>
+          )}
+
           <div className="wynik-szczegoly">
-            <p>ZUS: <span>{wynik.zusLacznie.toFixed(2)} zł</span></p>
-            <p>Składka zdrowotna: <span>{wynik.zdrowotna.toFixed(2)} zł</span></p>
-            <p>Podatek: <span>{wynik.podatek.toFixed(2)} zł</span></p>
+            {wynik.skladki.map((s, i) => (
+              <p key={i}>
+                {s.nazwa}: <span>{s.kwota.toFixed(2)} zł</span>
+              </p>
+            ))}
           </div>
         </div>
       )}
