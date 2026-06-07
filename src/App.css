@@ -305,3 +305,71 @@
   font-size: 0.9rem;
   color: #1e40af;
 }
+.tryb-przelacznik {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.tryb-przelacznik button {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #e2e8f0;
+  font-size: 1rem;
+}
+
+.tryb-przelacznik button.aktywny {
+  background: #2563eb;
+  color: white;
+}
+
+.czy-stac-siatka {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.czy-stac-siatka h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1a202c;
+}
+
+.dostepne-srodki {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.zielony { color: #16a34a; font-size: 1.1rem; }
+.czerwony { color: #e53e3e; font-size: 1.1rem; }
+
+.ocena-kredytu {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.ocena-tak {
+  background: #f0fdf4;
+  border: 1px solid #16a34a;
+  color: #15803d;
+}
+
+.ocena-nie {
+  background: #fef2f2;
+  border: 1px solid #e53e3e;
+  color: #b91c1c;
+}
+
+.ocena-kredytu p {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
