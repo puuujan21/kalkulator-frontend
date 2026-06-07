@@ -6,6 +6,7 @@ import Cele from './Cele';
 import Dashboard from './Dashboard';
 import CzyStac from './CzyStac';
 import Auth from './Auth';
+import Profil from './Profil';
 
 type Uzytkownik = { id: number; email: string; imie: string };
 
@@ -45,6 +46,7 @@ function App() {
           <button onClick={() => setAktywnaZakladka('kalkulator')} className={aktywnaZakladka === 'kalkulator' ? 'aktywny' : ''}>Kalkulator</button>
           <button onClick={() => setAktywnaZakladka('cele')} className={aktywnaZakladka === 'cele' ? 'aktywny' : ''}>Cele</button>
           <button onClick={() => setAktywnaZakladka('czystac')} className={aktywnaZakladka === 'czystac' ? 'aktywny' : ''}>Czy mnie stać?</button>
+          <button onClick={() => setAktywnaZakladka('profil')} className={aktywnaZakladka === 'profil' ? 'aktywny' : ''}>Profil</button>
           <span className="uzytkownik-info">Cześć, {uzytkownik.imie}!</span>
           <button onClick={wyloguj} className="przycisk-wyloguj">Wyloguj</button>
         </nav>
@@ -55,6 +57,7 @@ function App() {
         {aktywnaZakladka === 'kalkulator' && <Kalkulator />}
         {aktywnaZakladka === 'cele' && <Cele />}
         {aktywnaZakladka === 'czystac' && <CzyStac />}
+        {aktywnaZakladka === 'profil' && <Profil />}
       </main>
     </div>
   );

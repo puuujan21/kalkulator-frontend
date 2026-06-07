@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type Tryb = 'kredyt' | 'gotowka';
 type TypRat = 'rowne' | 'malejace';
@@ -55,6 +55,16 @@ function CzyStac() {
   const [dochodNetto, setDochodNetto] = useState('');
   const [staleWydatki, setStaleWydatki] = useState('');
   const [cenaGotowka, setCenaGotowka] = useState('');
+  useEffect(() => {
+    fetch('http://localhost:5000/api/profil', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+    })
+      .then((r) => r.json())
+      .then((dane) => {
+        if (dane.dochod_netto) setDochodNetto(dane.dochod_netto.toString());
+        if (dane.stale_wydatki) setStaleWydatki(dane.stale_wydatki.toString());
+      });
+  }, []);
 
   const dostepneSrodki = parseFloat(dochodNetto || '0') - parseFloat(staleWydatki || '0');
   const maxRata = dostepneSrodki * 0.35;
