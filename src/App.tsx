@@ -3,6 +3,7 @@ import './App.css';
 import Kalkulator from './Kalkulator';
 import Wydatki from './Wydatki';
 import Cele from './Cele';
+import Dashboard from './Dashboard';
 
 function App() {
   const [aktywnaZakladka, setAktywnaZakladka] = useState('kalkulator');
@@ -20,7 +21,7 @@ function App() {
       </header>
       <main>
         {aktywnaZakladka === 'kalkulator' && <Kalkulator />}
-        {aktywnaZakladka === 'dashboard' && <p>Dashboard - wkrótce</p>}
+        {aktywnaZakladka === 'dashboard' && <Dashboard />}
         {aktywnaZakladka === 'wydatki' && <Wydatki />}
         {aktywnaZakladka === 'cele' && <Cele />}
       </main>
