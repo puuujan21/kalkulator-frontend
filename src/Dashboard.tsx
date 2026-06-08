@@ -58,9 +58,9 @@ export default function Dashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     Promise.all([
-fetch('http://localhost:5000/api/profil', { headers }).then(r => r.json()),
-fetch(`http://localhost:5000/api/wydatki?rok=${rok}&miesiac=${miesiac}`, { headers }).then(r => r.json()),
-fetch('http://localhost:5000/api/cele', { headers }).then(r => r.json()),
+fetch('/api/profil', { headers }).then(r => r.json()),
+fetch(`/api/wydatki?rok=${rok}&miesiac=${miesiac}`, { headers }).then(r => r.json()),
+fetch('/api/cele', { headers }).then(r => r.json()),
     ]).then(([profilData, wydatkiData, celeData]) => {
       setProfil(profilData);
       setWydatki(Array.isArray(wydatkiData) ? wydatkiData : []);

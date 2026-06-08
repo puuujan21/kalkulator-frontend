@@ -86,7 +86,7 @@ function CzyStac() {
   const [dodanoDoWydatkow, setDodanoDoWydatkow] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/profil', {
+    fetch('/api/profil', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
     })
       .then(r => r.json())
@@ -129,7 +129,7 @@ function CzyStac() {
 
 const dodajJakoCel = async () => {
   if (!cenaGotowka) return;
-  await fetch('http://localhost:5000/api/cele', {
+  await fetch('${process.env.REACT_APP_API_URL}/api/cele', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
     body: JSON.stringify({
@@ -143,7 +143,7 @@ const dodajJakoCel = async () => {
 
   const dodajJakoWydatek = async () => {
     if (!calkowitaMiesiecznaRata) return;
-    await fetch('http://localhost:5000/api/wydatki', {
+    await fetch('${process.env.REACT_APP_API_URL}/api/wydatki', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       body: JSON.stringify({

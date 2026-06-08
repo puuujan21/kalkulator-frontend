@@ -193,7 +193,7 @@ function Kalkulator() {
   const zapiszDoProfilu = async () => {
     if (!wynik) return;
     setZapisywanie(true);
-    await fetch('http://localhost:5000/api/profil', {
+    await fetch('/api/profil', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       body: JSON.stringify({ dochod_netto: Math.round(wynik.netto) }),

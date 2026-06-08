@@ -7,7 +7,7 @@ type Cel = {
   aktualna: number;
 };
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 function getToken() { return localStorage.getItem('token') || ''; }
 
 const inputStyle: React.CSSProperties = {
