@@ -8,6 +8,7 @@ type Wydatek = {
   kwota: number;
   kategoria: Kategoria;
   data: string;
+  staly: boolean;
 };
 
 const KATEGORIE: { value: Kategoria; label: string }[] = [
@@ -31,6 +32,7 @@ function Wydatki() {
   const [kwota, setKwota] = useState('');
   const [kategoria, setKategoria] = useState<Kategoria>('inne');
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
+  const [staly, setStaly] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/wydatki`, {
@@ -45,12 +47,13 @@ function Wydatki() {
     const odpowiedz = await fetch(`${API}/wydatki`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      body: JSON.stringify({ nazwa, kwota: parseFloat(kwota), kategoria, data }),
+      body: JSON.stringify({ nazwa, kwota: parseFloat(kwota), kategoria, data, staly }),
     });
     const nowy = await odpowiedz.json();
     setWydatki([nowy, ...wydatki]);
     setNazwa('');
     setKwota('');
+    setStaly(false);
   };
 
   const usunWydatek = async (id: number) => {
@@ -85,6 +88,14 @@ function Wydatki() {
         </select>
         <label>Data</label>
         <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        <label className="checkbox-label">
+  <input
+    type="checkbox"
+    checked={staly}
+    onChange={(e) => setStaly(e.target.checked)}
+  />
+  Stały wydatek (np. czynsz, abonament)
+</label>
         <button className="przycisk-dodaj" onClick={dodajWydatek}>Dodaj wydatek</button>
       </div>
 
@@ -110,10 +121,11 @@ function Wydatki() {
               <div key={w.id} className="wydatek-row">
                 <div>
                   <strong>{w.nazwa}</strong>
+                  {w.staly && <span className="staly-tag">Stały</span>}
                   <span className="kategoria-tag">{KATEGORIE.find((k) => k.value === w.kategoria)?.label}</span>
                 </div>
                 <div className="wydatek-prawa">
-                  <span>{w.data}</span>
+                  <span>{w.data?.toString().split('T')[0]}</span>
                   <strong>{Number(w.kwota).toFixed(2)} zł</strong>
                   <button className="przycisk-usun" onClick={() => usunWydatek(w.id)}>✕</button>
                 </div>

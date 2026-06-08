@@ -481,3 +481,11 @@
 .przycisk-wyloguj:hover {
   background: #fef2f2;
 }
+.staly-tag {
+  margin-left: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  background: #fef3c7;
+  color: #d97706;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}

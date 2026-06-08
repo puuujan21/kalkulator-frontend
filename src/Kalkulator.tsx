@@ -231,6 +231,23 @@ function Kalkulator() {
             <span>Netto na konto</span>
             <strong>{wynik.netto.toFixed(2)} zł</strong>
           </div>
+          <button
+  className="przycisk-dodaj"
+  style={{ marginTop: '1rem' }}
+  onClick={async () => {
+    await fetch('http://localhost:5000/api/profil', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+      },
+      body: JSON.stringify({ dochod_netto: Math.round(wynik.netto), stale_wydatki: undefined }),
+    });
+    alert(`Zapisano ${wynik.netto.toFixed(2)} zł jako dochód netto w profilu`);
+  }}
+>
+  Zapisz jako dochód do profilu
+</button>
 
           {wynik.uwagi.length > 0 && (
             <div className="uwagi">
