@@ -39,7 +39,7 @@ function App() {
     const token = localStorage.getItem('token');
     if (saved && token) {
       setUzytkownik(JSON.parse(saved));
-      fetch('http://localhost:5000/api/profil', {
+      fetch('/api/profil', {
         headers: { Authorization: `Bearer ${token}` },
       }).then(r => r.json()).then(p => setOnboardingDone(p.onboarding_done));
     }
@@ -47,7 +47,7 @@ function App() {
 
   const onZalogowany = async (token: string, user: Uzytkownik) => {
     setUzytkownik(user);
-    const p = await fetch('http://localhost:5000/api/profil', {
+    const p = await fetch('/api/profil', {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json());
     setOnboardingDone(p.onboarding_done);
