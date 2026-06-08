@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 type Tryb = 'kredyt' | 'gotowka';
 type TypRat = 'rowne' | 'malejace';
@@ -16,7 +16,6 @@ function obliczHarmonogramRowne(kwota: number, oprocentowanie: number, miesiaceS
   const rata = (kwota * r * Math.pow(1 + r, miesiaceSplaty)) / (Math.pow(1 + r, miesiaceSplaty) - 1);
   const harmonogram: WierszHarmonogramu[] = [];
   let pozostalo = kwota;
-
   for (let i = 1; i <= miesiaceSplaty; i++) {
     const odsetki = pozostalo * r;
     const kapital = rata - odsetki;
@@ -31,7 +30,6 @@ function obliczHarmonogramMalejace(kwota: number, oprocentowanie: number, miesia
   const kapitalMiesieczny = kwota / miesiaceSplaty;
   const harmonogram: WierszHarmonogramu[] = [];
   let pozostalo = kwota;
-
   for (let i = 1; i <= miesiaceSplaty; i++) {
     const odsetki = pozostalo * r;
     const rata = kapitalMiesieczny + odsetki;
@@ -41,9 +39,37 @@ function obliczHarmonogramMalejace(kwota: number, oprocentowanie: number, miesia
   return harmonogram;
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '0.625rem 0.875rem',
+  background: 'hsl(240,6%,10%)',
+  border: '1px solid hsl(240,4%,16%)',
+  borderRadius: '8px',
+  color: 'hsl(0,0%,98%)',
+  fontSize: '0.875rem',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  color: 'hsl(240,5%,55%)',
+  marginBottom: '0.375rem',
+  display: 'block',
+};
+
+const sectionTitle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  fontWeight: 500,
+  color: 'hsl(240,5%,55%)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.05em',
+  marginBottom: '0.875rem',
+};
+
 function CzyStac() {
   const [tryb, setTryb] = useState<Tryb>('kredyt');
-
   const [kwota, setKwota] = useState('');
   const [oprocentowanie, setOprocentowanie] = useState('8.89');
   const [okres, setOkres] = useState('360');
@@ -51,24 +77,28 @@ function CzyStac() {
   const [prowizja, setProwizja] = useState('2');
   const [ubezpieczenie, setUbezpieczenie] = useState('0.03');
   const [pokazHarmonogram, setPokazHarmonogram] = useState(false);
-
   const [dochodNetto, setDochodNetto] = useState('');
   const [staleWydatki, setStaleWydatki] = useState('');
   const [cenaGotowka, setCenaGotowka] = useState('');
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   useEffect(() => {
     fetch('http://localhost:5000/api/profil', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
     })
-      .then((r) => r.json())
-      .then((dane) => {
+      .then(r => r.json())
+      .then(dane => {
         if (dane.dochod_netto) setDochodNetto(dane.dochod_netto.toString());
         if (dane.stale_wydatki) setStaleWydatki(dane.stale_wydatki.toString());
       });
   }, []);
 
+  const focusStyle = (field: string): React.CSSProperties => ({
+    borderColor: focusedField === field ? 'hsl(217,91%,60%)' : 'hsl(240,4%,16%)',
+  });
+
   const dostepneSrodki = parseFloat(dochodNetto || '0') - parseFloat(staleWydatki || '0');
   const maxRata = dostepneSrodki * 0.35;
-
   const kwotaNum = parseFloat(kwota || '0');
   const oprocentowanieNum = parseFloat(oprocentowanie || '0') / 100;
   const okresNum = parseInt(okres || '0');
@@ -92,158 +122,276 @@ function CzyStac() {
     ? Math.ceil(parseFloat(cenaGotowka) / dostepneSrodki)
     : null;
 
-  return (
-    <div className="karta">
-      <h2>Czy mnie na to stać?</h2>
+  const fmt = (n: number) => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(n);
 
-      <div className="tryb-przelacznik">
-        <button className={tryb === 'kredyt' ? 'aktywny' : ''} onClick={() => setTryb('kredyt')}>Na kredyt</button>
-        <button className={tryb === 'gotowka' ? 'aktywny' : ''} onClick={() => setTryb('gotowka')}>Za gotówkę</button>
+  const karta: React.CSSProperties = {
+    background: 'hsl(240,6%,7%)',
+    border: '1px solid hsl(240,4%,13%)',
+    borderRadius: '12px',
+    padding: '1.25rem',
+  };
+
+  const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
+
+  return (
+    <div style={{ maxWidth: '900px' }}>
+      {/* Nagłówek */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'hsl(0,0%,98%)', letterSpacing: '-0.02em', margin: 0 }}>
+          Czy mnie na to stać?
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,55%)', marginTop: '0.25rem' }}>
+          Sprawdź zdolność kredytową lub czas oszczędzania
+        </p>
       </div>
 
-      <div className="czy-stac-siatka">
-        <div>
-          <h3>Twoje finanse</h3>
-          <div className="formularz">
-            <label>Dochód netto miesięcznie (zł)</label>
-            <input type="number" value={dochodNetto} onChange={(e) => setDochodNetto(e.target.value)} placeholder="np. 5000" />
-            <label>Stałe wydatki miesięcznie (zł)</label>
-            <input type="number" value={staleWydatki} onChange={(e) => setStaleWydatki(e.target.value)} placeholder="np. 2000" />
-            {dochodNetto && staleWydatki && (
-              <div className="dostepne-srodki">
-                <span>Wolne środki miesięcznie:</span>
-                <strong className={dostepneSrodki > 0 ? 'zielony' : 'czerwony'}>{dostepneSrodki.toFixed(2)} zł</strong>
+      {/* Przełącznik trybu */}
+      <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '1rem' }}>
+        {[{ value: 'kredyt', label: 'Na kredyt' }, { value: 'gotowka', label: 'Za gotówkę' }].map(t => (
+          <button
+            key={t.value}
+            onClick={() => setTryb(t.value as Tryb)}
+            style={{
+              padding: '0.5rem 1.25rem',
+              borderRadius: '8px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', border: 'none',
+              background: tryb === t.value ? 'hsl(217,91%,60%)' : 'hsl(240,6%,10%)',
+              color: tryb === t.value ? '#fff' : 'hsl(240,5%,65%)',
+              transition: 'all 0.15s',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'start' }}>
+        {/* Lewa — finanse */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={karta}>
+            <p style={sectionTitle}>Twoje finanse</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              <div>
+                <label style={labelStyle}>Dochód netto miesięcznie</label>
+                <input type="number" value={dochodNetto} onChange={e => setDochodNetto(e.target.value)} placeholder="np. 5000"
+                  style={{ ...inputStyle, ...focusStyle('dochod') }}
+                  onFocus={() => setFocusedField('dochod')} onBlur={() => setFocusedField(null)} />
               </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          {tryb === 'kredyt' && (
-            <>
-              <h3>Parametry kredytu</h3>
-              <div className="formularz">
-                <label>Kwota kredytu (zł)</label>
-                <input type="number" value={kwota} onChange={(e) => setKwota(e.target.value)} placeholder="np. 300000" />
-
-                <label>Oprocentowanie roczne (%)</label>
-                <input type="number" value={oprocentowanie} onChange={(e) => setOprocentowanie(e.target.value)} placeholder="np. 8.89" step="0.01" />
-
-                <label>Okres spłaty</label>
-                <select value={okres} onChange={(e) => setOkres(e.target.value)}>
-                  <option value="60">5 lat</option>
-                  <option value="120">10 lat</option>
-                  <option value="180">15 lat</option>
-                  <option value="240">20 lat</option>
-                  <option value="300">25 lat</option>
-                  <option value="360">30 lat</option>
-                </select>
-
-                <label>Typ rat</label>
-                <select value={typRat} onChange={(e) => setTypRat(e.target.value as TypRat)}>
-                  <option value="rowne">Raty równe (annuitetowe)</option>
-                  <option value="malejace">Raty malejące</option>
-                </select>
-
-                <label>Prowizja banku (%)</label>
-                <input type="number" value={prowizja} onChange={(e) => setProwizja(e.target.value)} placeholder="np. 2" step="0.1" />
-
-                <label>Ubezpieczenie miesięczne (% od kwoty kredytu)</label>
-                <input type="number" value={ubezpieczenie} onChange={(e) => setUbezpieczenie(e.target.value)} placeholder="np. 0.03" step="0.01" />
+              <div>
+                <label style={labelStyle}>Stałe wydatki miesięcznie</label>
+                <input type="number" value={staleWydatki} onChange={e => setStaleWydatki(e.target.value)} placeholder="np. 2000"
+                  style={{ ...inputStyle, ...focusStyle('wydatki') }}
+                  onFocus={() => setFocusedField('wydatki')} onBlur={() => setFocusedField(null)} />
               </div>
-
-              {harmonogram.length > 0 && (
-                <div className="wyniki">
-                  <div className="wynik-główny">
-                    <span>{typRat === 'rowne' ? 'Miesięczna rata' : 'Pierwsza rata'}</span>
-                    <strong>{calkowitaMiesiecznaRata.toFixed(2)} zł</strong>
-                  </div>
-                  <div className="wynik-szczegoly">
-                    {ubezpieczenieMiesieczne > 0 && (
-                      <p>w tym ubezpieczenie: <span>{ubezpieczenieMiesieczne.toFixed(2)} zł/mies.</span></p>
-                    )}
-                    {prowizjaKwota > 0 && (
-                      <p>Prowizja banku: <span>{prowizjaKwota.toFixed(2)} zł</span></p>
-                    )}
-                    <p>Łącznie do spłaty: <span>{lacznie.toFixed(2)} zł</span></p>
-                    <p>w tym odsetki: <span>{laczneOdsetki.toFixed(2)} zł</span></p>
-                    <p>w tym prowizja: <span>{prowizjaKwota.toFixed(2)} zł</span></p>
-                    <p>w tym ubezpieczenie łącznie: <span>{(ubezpieczenieMiesieczne * okresNum).toFixed(2)} zł</span></p>
-                  </div>
-
-                  {dochodNetto && staleWydatki && (
-                    <div className={`ocena-kredytu ${moznaWziacKredyt ? 'ocena-tak' : 'ocena-nie'}`}>
-                      <strong>{moznaWziacKredyt ? '✓ Stać Cię na ten kredyt' : '✗ Rata przekracza bezpieczny limit'}</strong>
-                      <p>Maksymalna bezpieczna rata: {maxRata.toFixed(2)} zł (35% wolnych środków)</p>
-                    </div>
-                  )}
-
-                  <button
-                    className="przycisk-harmonogram"
-                    onClick={() => setPokazHarmonogram(!pokazHarmonogram)}
-                  >
-                    {pokazHarmonogram ? 'Ukryj harmonogram' : 'Pokaż harmonogram spłaty'}
-                  </button>
-
-                  {pokazHarmonogram && (
-                    <div className="harmonogram">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Miesiąc</th>
-                            <th>Rata</th>
-                            <th>Kapitał</th>
-                            <th>Odsetki</th>
-                            <th>Pozostało</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {harmonogram.map((w) => (
-                            <tr key={w.miesiac}>
-                              <td>{w.miesiac}</td>
-                              <td>{w.rata.toFixed(2)} zł</td>
-                              <td>{w.kapital.toFixed(2)} zł</td>
-                              <td>{w.odsetki.toFixed(2)} zł</td>
-                              <td>{w.pozostalo.toFixed(2)} zł</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+              {dochodNetto && staleWydatki && (
+                <div style={{ padding: '0.875rem', background: 'hsl(240,6%,10%)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)' }}>Wolne środki</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: dostepneSrodki >= 0 ? 'hsl(142,71%,55%)' : 'hsl(0,72%,60%)' }}>
+                    {fmt(dostepneSrodki)}
+                  </span>
                 </div>
               )}
-            </>
-          )}
+            </div>
+          </div>
 
           {tryb === 'gotowka' && (
-            <>
-              <h3>Zakup za gotówkę</h3>
-              <div className="formularz">
-                <label>Cena zakupu (zł)</label>
-                <input type="number" value={cenaGotowka} onChange={(e) => setCenaGotowka(e.target.value)} placeholder="np. 50000" />
+            <div style={karta}>
+              <p style={sectionTitle}>Zakup za gotówkę</p>
+              <div>
+                <label style={labelStyle}>Cena zakupu</label>
+                <input type="number" value={cenaGotowka} onChange={e => setCenaGotowka(e.target.value)} placeholder="np. 50000"
+                  style={{ ...inputStyle, ...focusStyle('cena') }}
+                  onFocus={() => setFocusedField('cena')} onBlur={() => setFocusedField(null)} />
               </div>
+            </div>
+          )}
+        </div>
 
-              {miesiaceNaGotowke !== null && cenaGotowka && (
-                <div className="wyniki">
-                  <div className={`ocena-kredytu ${dostepneSrodki > 0 ? 'ocena-tak' : 'ocena-nie'}`}>
-                    {dostepneSrodki <= 0 ? (
-                      <strong>✗ Brak wolnych środków do oszczędzania</strong>
-                    ) : miesiaceNaGotowke <= 1 ? (
-                      <strong>✓ Stać Cię na to już teraz!</strong>
-                    ) : (
-                      <>
-                        <strong>Czas oszczędzania: {miesiaceNaGotowke} miesięcy ({(miesiaceNaGotowke / 12).toFixed(1)} lat)</strong>
-                        <p>Odkładając {dostepneSrodki.toFixed(2)} zł miesięcznie</p>
-                      </>
-                    )}
+        {/* Prawa — parametry kredytu lub wyniki gotówki */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {tryb === 'kredyt' && (
+            <div style={karta}>
+              <p style={sectionTitle}>Parametry kredytu</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <label style={labelStyle}>Kwota kredytu</label>
+                  <input type="number" value={kwota} onChange={e => setKwota(e.target.value)} placeholder="np. 300000"
+                    style={{ ...inputStyle, ...focusStyle('kwota') }}
+                    onFocus={() => setFocusedField('kwota')} onBlur={() => setFocusedField(null)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={labelStyle}>Oprocentowanie (%)</label>
+                    <input type="number" value={oprocentowanie} onChange={e => setOprocentowanie(e.target.value)} step="0.01"
+                      style={{ ...inputStyle, ...focusStyle('opr') }}
+                      onFocus={() => setFocusedField('opr')} onBlur={() => setFocusedField(null)} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Prowizja (%)</label>
+                    <input type="number" value={prowizja} onChange={e => setProwizja(e.target.value)} step="0.1"
+                      style={{ ...inputStyle, ...focusStyle('prow') }}
+                      onFocus={() => setFocusedField('prow')} onBlur={() => setFocusedField(null)} />
                   </div>
                 </div>
+                <div>
+                  <label style={labelStyle}>Ubezpieczenie (% od kwoty/mies.)</label>
+                  <input type="number" value={ubezpieczenie} onChange={e => setUbezpieczenie(e.target.value)} step="0.01"
+                    style={{ ...inputStyle, ...focusStyle('ubez') }}
+                    onFocus={() => setFocusedField('ubez')} onBlur={() => setFocusedField(null)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Okres spłaty</label>
+                  <select value={okres} onChange={e => setOkres(e.target.value)} style={selectStyle}>
+                    <option value="60">5 lat</option>
+                    <option value="120">10 lat</option>
+                    <option value="180">15 lat</option>
+                    <option value="240">20 lat</option>
+                    <option value="300">25 lat</option>
+                    <option value="360">30 lat</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Typ rat</label>
+                  <select value={typRat} onChange={e => setTypRat(e.target.value as TypRat)} style={selectStyle}>
+                    <option value="rowne">Raty równe (annuitetowe)</option>
+                    <option value="malejace">Raty malejące</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Wyniki kredytu */}
+          {tryb === 'kredyt' && harmonogram.length > 0 && (
+            <>
+              <div style={karta}>
+                <p style={sectionTitle}>Wynik</p>
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginBottom: '0.25rem' }}>
+                    {typRat === 'rowne' ? 'Miesięczna rata' : 'Pierwsza rata'}
+                  </p>
+                  <p style={{ fontSize: '2rem', fontWeight: 700, color: 'hsl(0,0%,98%)', letterSpacing: '-0.02em', margin: 0 }}>
+                    {fmt(calkowitaMiesiecznaRata)}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.875rem', borderTop: '1px solid hsl(240,4%,13%)' }}>
+                  {ubezpieczenieMiesieczne > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)' }}>w tym ubezpieczenie</span>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(0,0%,80%)' }}>{fmt(ubezpieczenieMiesieczne)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)' }}>Łącznie do spłaty</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'hsl(0,0%,80%)' }}>{fmt(lacznie)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)' }}>w tym odsetki</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'hsl(0,72%,60%)' }}>{fmt(laczneOdsetki)}</span>
+                  </div>
+                  {prowizjaKwota > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)' }}>Prowizja banku</span>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(0,0%,80%)' }}>{fmt(prowizjaKwota)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {dochodNetto && staleWydatki && (
+                <div style={{
+                  padding: '1rem',
+                  background: moznaWziacKredyt ? 'hsl(142,60%,8%)' : 'hsl(0,60%,8%)',
+                  border: `1px solid ${moznaWziacKredyt ? 'hsl(142,60%,18%)' : 'hsl(0,60%,18%)'}`,
+                  borderRadius: '10px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={moznaWziacKredyt ? 'hsl(142,71%,55%)' : 'hsl(0,72%,60%)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      {moznaWziacKredyt
+                        ? <polyline points="20 6 9 17 4 12"/>
+                        : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                      }
+                    </svg>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: moznaWziacKredyt ? 'hsl(142,71%,55%)' : 'hsl(0,72%,60%)' }}>
+                      {moznaWziacKredyt ? 'Stać Cię na ten kredyt' : 'Rata przekracza bezpieczny limit'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)', margin: 0 }}>
+                    Maks. bezpieczna rata: {fmt(maxRata)} (35% wolnych środków)
+                  </p>
+                </div>
               )}
+
+              <button
+                onClick={() => setPokazHarmonogram(!pokazHarmonogram)}
+                style={{
+                  padding: '0.5rem 1rem', background: 'hsl(240,6%,10%)', border: '1px solid hsl(240,4%,16%)',
+                  borderRadius: '8px', color: 'hsl(0,0%,75%)', fontSize: '0.8125rem', cursor: 'pointer',
+                }}
+              >
+                {pokazHarmonogram ? 'Ukryj harmonogram' : 'Pokaż harmonogram spłaty'}
+              </button>
             </>
+          )}
+
+          {/* Wyniki gotówki */}
+          {tryb === 'gotowka' && miesiaceNaGotowke !== null && cenaGotowka && (
+            <div style={{
+              ...karta,
+              background: dostepneSrodki > 0 ? 'hsl(217,60%,8%)' : 'hsl(0,60%,8%)',
+              border: `1px solid ${dostepneSrodki > 0 ? 'hsl(217,60%,18%)' : 'hsl(0,60%,18%)'}`,
+            }}>
+              {dostepneSrodki <= 0 ? (
+                <p style={{ fontSize: '0.875rem', color: 'hsl(0,72%,60%)', fontWeight: 600, margin: 0 }}>
+                  Brak wolnych środków do oszczędzania
+                </p>
+              ) : miesiaceNaGotowke <= 1 ? (
+                <p style={{ fontSize: '0.875rem', color: 'hsl(142,71%,55%)', fontWeight: 600, margin: 0 }}>
+                  Stać Cię na to już teraz!
+                </p>
+              ) : (
+                <>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(217,91%,70%)', marginBottom: '0.375rem' }}>Czas oszczędzania</p>
+                  <p style={{ fontSize: '1.75rem', fontWeight: 700, color: 'hsl(0,0%,98%)', letterSpacing: '-0.02em', margin: '0 0 0.375rem' }}>
+                    {miesiaceNaGotowke} mies. ({(miesiaceNaGotowke / 12).toFixed(1)} lat)
+                  </p>
+                  <p style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)', margin: 0 }}>
+                    Odkładając {fmt(dostepneSrodki)} miesięcznie
+                  </p>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
+
+      {/* Harmonogram */}
+      {pokazHarmonogram && harmonogram.length > 0 && (
+        <div style={{ ...karta, marginTop: '1rem', overflowX: 'auto' }}>
+          <p style={sectionTitle}>Harmonogram spłaty</p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead>
+              <tr>
+                {['Miesiąc', 'Rata', 'Kapitał', 'Odsetki', 'Pozostało'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'hsl(240,5%,45%)', fontWeight: 500, borderBottom: '1px solid hsl(240,4%,13%)' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {harmonogram.map(w => (
+                <tr key={w.miesiac} style={{ borderBottom: '1px solid hsl(240,4%,10%)' }}>
+                  <td style={{ padding: '0.5rem 0.75rem', color: 'hsl(240,5%,55%)' }}>{w.miesiac}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: 'hsl(0,0%,90%)' }}>{w.rata.toFixed(2)} zł</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: 'hsl(142,71%,55%)' }}>{w.kapital.toFixed(2)} zł</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: 'hsl(0,72%,60%)' }}>{w.odsetki.toFixed(2)} zł</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: 'hsl(0,0%,80%)' }}>{w.pozostalo.toFixed(2)} zł</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

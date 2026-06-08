@@ -1,122 +1,194 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-type Wydatek = { id: number; nazwa: string; kwota: number; kategoria: string; data: string };
-type Cel = { id: number; nazwa: string; docelowa: number; aktualna: number };
-type Profil = { dochod_netto: number; stale_wydatki: number };
+interface ProfilData {
+  dochodNetto: number;
+  staleWydatki: number;
+}
 
-const API = 'http://localhost:5000/api';
-function getToken() { return localStorage.getItem('token') || ''; }
+interface Wydatek {
+  id: number;
+  nazwa: string;
+  kwota: number;
+  kategoria: string;
+  data: string;
+}
 
-const NAZWY_MIESIECY = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+interface Cel {
+  id: number;
+  nazwa: string;
+  kwotaDocelowa: number;
+  kwotaAktualna: number;
+}
 
-function Dashboard() {
+const karta: React.CSSProperties = {
+  background: 'hsl(240, 6%, 7%)',
+  border: '1px solid hsl(240, 4%, 13%)',
+  borderRadius: '12px',
+  padding: '1.5rem',
+};
+
+const kartaTytul: React.CSSProperties = {
+  fontSize: '0.75rem',
+  fontWeight: 500,
+  color: 'hsl(240, 5%, 55%)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: '0.5rem',
+};
+
+const kartaWartosc: React.CSSProperties = {
+  fontSize: '1.875rem',
+  fontWeight: 600,
+  color: 'hsl(0, 0%, 98%)',
+  letterSpacing: '-0.02em',
+};
+
+export default function Dashboard() {
+  const [profil, setProfil] = useState<ProfilData | null>(null);
   const [wydatki, setWydatki] = useState<Wydatek[]>([]);
   const [cele, setCele] = useState<Cel[]>([]);
-  const [profil, setProfil] = useState<Profil | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const now = new Date();
   const rok = now.getFullYear();
   const miesiac = now.getMonth() + 1;
 
   useEffect(() => {
-    const headers = { Authorization: `Bearer ${getToken()}` };
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
 
-    fetch(`${API}/wydatki?rok=${rok}&miesiac=${miesiac}`, { headers })
-      .then(r => r.json())
-      .then(setWydatki);
-
-    fetch(`${API}/cele`, { headers })
-      .then(r => r.json())
-      .then(setCele);
-
-    fetch(`${API}/profil`, { headers })
-      .then(r => r.json())
-      .then(setProfil);
+    Promise.all([
+      fetch('/api/profil', { headers }).then(r => r.json()),
+      fetch(`/api/wydatki?rok=${rok}&miesiac=${miesiac}`, { headers }).then(r => r.json()),
+      fetch('/api/cele', { headers }).then(r => r.json()),
+    ]).then(([profilData, wydatkiData, celeData]) => {
+      setProfil(profilData);
+      setWydatki(Array.isArray(wydatkiData) ? wydatkiData : []);
+      setCele(Array.isArray(celeData) ? celeData : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  const sumaWydatkow = wydatki.reduce((acc, w) => acc + Number(w.kwota), 0);
-  const dochodNetto = Number(profil?.dochod_netto ?? 0);
-  const staleWydatki = Number(profil?.stale_wydatki ?? 0);
-  const wolneS = dochodNetto - staleWydatki - sumaWydatkow;
-  const ostatnieWydatki = wydatki.slice(0, 5);
-  const nazwaMiesiaca = NAZWY_MIESIECY[miesiac - 1];
+  const sumaWydatkow = wydatki.reduce((s, w) => s + Number(w.kwota), 0);
+  const dochodNetto = profil?.dochodNetto ?? 0;
+  const staleWydatki = profil?.staleWydatki ?? 0;
+  const wolneKonto = dochodNetto - staleWydatki - sumaWydatkow;
+
+  const formatKwota = (kwota: number) =>
+    new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(kwota);
+
+  const nazwyMiesiecy = [
+    '', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+    'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień',
+  ];
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
+        <div style={{ width: '20px', height: '20px', border: '2px solid hsl(240,4%,13%)', borderTopColor: 'hsl(217,91%,60%)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard">
-      <p className="dashboard-okres">{nazwaMiesiaca} {rok}</p>
-
-      <div className="dashboard-siatka-gorna">
-        <div className="karta stat-karta">
-          <p className="stat-label">Dochód netto</p>
-          <p className="stat-wartosc">{dochodNetto.toFixed(2)} zł</p>
-        </div>
-        <div className="karta stat-karta">
-          <p className="stat-label">Stałe wydatki</p>
-          <p className="stat-wartosc stat-szary">{staleWydatki.toFixed(2)} zł</p>
-        </div>
-        <div className="karta stat-karta">
-          <p className="stat-label">Wydatki w {nazwaMiesiaca.toLowerCase()}</p>
-          <p className="stat-wartosc stat-czerwony">{sumaWydatkow.toFixed(2)} zł</p>
-        </div>
+    <div style={{ maxWidth: '900px' }}>
+      {/* Nagłówek */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'hsl(0,0%,98%)', letterSpacing: '-0.02em', margin: 0 }}>
+          Dashboard
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,55%)', marginTop: '0.25rem' }}>
+          {nazwyMiesiecy[miesiac]} {rok}
+        </p>
       </div>
 
-      <div className="dashboard-siatka-dolna">
-        <div className="karta stat-karta">
-          <p className="stat-label">Wolne środki</p>
-          <p className={`stat-wartosc ${wolneS >= 0 ? 'stat-zielony' : 'stat-czerwony'}`}>
-            {wolneS.toFixed(2)} zł
+      {/* Górna siatka — 3 karty statystyk */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={karta}>
+          <p style={kartaTytul}>Dochód netto</p>
+          <p style={{ ...kartaWartosc, color: 'hsl(142,71%,55%)' }}>{formatKwota(dochodNetto)}</p>
+          <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginTop: '0.5rem' }}>miesięcznie</p>
+        </div>
+
+        <div style={karta}>
+          <p style={kartaTytul}>Stałe wydatki</p>
+          <p style={{ ...kartaWartosc, color: 'hsl(0,72%,60%)' }}>{formatKwota(staleWydatki)}</p>
+          <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginTop: '0.5rem' }}>co miesiąc</p>
+        </div>
+
+        <div style={karta}>
+          <p style={kartaTytul}>Wolne środki</p>
+          <p style={{ ...kartaWartosc, color: wolneKonto >= 0 ? 'hsl(217,91%,60%)' : 'hsl(0,72%,60%)' }}>
+            {formatKwota(wolneKonto)}
           </p>
-          <p className="stat-opis">{dochodNetto.toFixed(0)} − {staleWydatki.toFixed(0)} stałe − {sumaWydatkow.toFixed(0)} bieżące</p>
-        </div>
-        <div className="karta stat-karta">
-          <p className="stat-label">Aktywne cele</p>
-          <p className="stat-wartosc">{cele.length}</p>
+          <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginTop: '0.5rem' }}>
+            po bieżących wydatkach
+          </p>
         </div>
       </div>
 
-      <div className="dashboard-dolny">
-        <div className="karta">
-          <h2>Ostatnie wydatki</h2>
-          {ostatnieWydatki.length === 0 && <p className="brak-celow">Brak wydatków w tym miesiącu</p>}
-          {ostatnieWydatki.map(w => (
-            <div key={w.id} className="wydatek-row">
-              <div>
-                <strong>{w.nazwa}</strong>
-                <span className="kategoria-tag">{w.kategoria}</span>
-              </div>
-              <div className="wydatek-prawa">
-                <span>{w.data?.toString().split('T')[0]}</span>
-                <strong>{Number(w.kwota).toFixed(2)} zł</strong>
-              </div>
+      {/* Dolna siatka — wydatki + cele */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+        {/* Ostatnie wydatki */}
+        <div style={karta}>
+          <p style={{ ...kartaTytul, marginBottom: '1rem' }}>Ostatnie wydatki</p>
+          {wydatki.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,55%)' }}>Brak wydatków w tym miesiącu</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {wydatki.slice(0, 5).map(w => (
+                <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: 'hsl(0,0%,98%)', fontWeight: 500 }}>{w.nazwa}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)' }}>{w.kategoria}</p>
+                  </div>
+                  <span style={{ fontSize: '0.875rem', color: 'hsl(0,72%,60%)', fontWeight: 500 }}>
+                    -{formatKwota(Number(w.kwota))}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid hsl(240,4%,13%)', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)' }}>Suma wydatków</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'hsl(0,0%,98%)' }}>{formatKwota(sumaWydatkow)}</span>
+          </div>
         </div>
 
-        <div className="karta">
-          <h2>Cele oszczędnościowe</h2>
-          {cele.length === 0 && <p className="brak-celow">Brak celów</p>}
-          {cele.map(cel => {
-            const procent = Math.min(Math.round((Number(cel.aktualna) / Number(cel.docelowa)) * 100), 100);
-            return (
-              <div key={cel.id} className="cel-dashboard">
-                <div className="cel-top">
-                  <span>{cel.nazwa}</span>
-                  <span>{procent}%</span>
-                </div>
-                <div className="pasek-tlo">
-                  <div className="pasek-wypelnienie" style={{ width: `${procent}%` }} />
-                </div>
-                <div className="cel-kwoty">
-                  <span>{Number(cel.aktualna).toFixed(2)} zł</span>
-                  <span>{Number(cel.docelowa).toFixed(2)} zł</span>
-                </div>
-              </div>
-            );
-          })}
+        {/* Cele */}
+        <div style={karta}>
+          <p style={{ ...kartaTytul, marginBottom: '1rem' }}>Cele oszczędnościowe</p>
+          {cele.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,55%)' }}>Brak aktywnych celów</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {cele.slice(0, 4).map(c => {
+                const procent = Math.min(100, Math.round((Number(c.kwotaAktualna) / Number(c.kwotaDocelowa)) * 100));
+                return (
+                  <div key={c.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(0,0%,98%)', fontWeight: 500 }}>{c.nazwa}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)' }}>{procent}%</span>
+                    </div>
+                    <div style={{ height: '4px', background: 'hsl(240,4%,13%)', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${procent}%`,
+                        background: 'hsl(217,91%,60%)',
+                        borderRadius: '999px',
+                        transition: 'width 0.4s ease',
+                      }} />
+                    </div>
+                    <p style={{ fontSize: '0.7rem', color: 'hsl(240,5%,45%)', marginTop: '0.25rem' }}>
+                      {formatKwota(Number(c.kwotaAktualna))} / {formatKwota(Number(c.kwotaDocelowa))}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-export default Dashboard;

@@ -589,3 +589,140 @@
   color: #4a5568;
   font-size: 0.95rem;
 }
+.analiza-filtry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.analiza-selects {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.analiza-selects select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+}
+
+.analiza-siatka {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.analiza-naglowek {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 1rem;
+}
+
+.analiza-pie-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.analiza-legenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.analiza-legenda-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.analiza-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.analiza-suma-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #eff6ff;
+  border-left: 4px solid #2563eb;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: #1e40af;
+}
+
+.analiza-tabela {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.analiza-wiersz {
+  display: grid;
+  grid-template-columns: 110px 1fr 36px auto 90px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.analiza-kat-nazwa {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+}
+
+.analiza-pasek-tlo {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.analiza-pasek {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.analiza-proc {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.analiza-diff {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.neutralny {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.analiza-kwota {
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.analiza-trend {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1.5rem;
+}

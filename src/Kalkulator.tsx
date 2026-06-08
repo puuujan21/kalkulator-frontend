@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 type TypUmowy = 'uop' | 'zlecenie' | 'b2b';
 type TypB2B = 'liniowy' | 'ryczalt';
@@ -88,7 +88,7 @@ function obliczB2BLiniowy(brutto: number, typZUS: TypZUSB2B): Wynik {
       { nazwa: 'Składka zdrowotna (4.9%)', kwota: zdrowotna },
       { nazwa: 'Podatek liniowy (19%)', kwota: podatek },
     ],
-    uwagi: [typZUS === 'ulga_na_start' ? 'Ulga na start — brak składek ZUS przez pierwsze 6 miesięcy' : typZUS === 'preferencyjny' ? 'ZUS preferencyjny — pierwsze 2 lata działalności' : 'ZUS normalny'],
+    uwagi: [typZUS === 'ulga_na_start' ? 'Ulga na start — brak ZUS przez pierwsze 6 miesięcy' : typZUS === 'preferencyjny' ? 'ZUS preferencyjny — pierwsze 2 lata' : 'ZUS normalny'],
   };
 }
 
@@ -104,27 +104,53 @@ function obliczB2BRyczalt(brutto: number, typZUS: TypZUSB2B, stawka: number): Wy
       { nazwa: 'Składka zdrowotna (ryczałtowa)', kwota: zdrowotna },
       { nazwa: `Podatek ryczałtowy (${(stawka * 100).toFixed(1)}%)`, kwota: podatek },
     ],
-    uwagi: [typZUS === 'ulga_na_start' ? 'Ulga na start — brak składek ZUS przez pierwsze 6 miesięcy' : typZUS === 'preferencyjny' ? 'ZUS preferencyjny — pierwsze 2 lata działalności' : 'ZUS normalny'],
+    uwagi: [typZUS === 'ulga_na_start' ? 'Ulga na start — brak ZUS przez pierwsze 6 miesięcy' : typZUS === 'preferencyjny' ? 'ZUS preferencyjny — pierwsze 2 lata' : 'ZUS normalny'],
   };
 }
 
-function znajdzBrutto(
-  doceloweNetto: number,
-  oblicz: (brutto: number) => Wynik
-): number {
+function znajdzBrutto(doceloweNetto: number, oblicz: (brutto: number) => Wynik): number {
   let min = doceloweNetto;
   let max = doceloweNetto * 3;
   for (let i = 0; i < 100; i++) {
     const mid = (min + max) / 2;
-    const wynik = oblicz(mid);
-    if (wynik.netto < doceloweNetto) {
-      min = mid;
-    } else {
-      max = mid;
-    }
+    if (oblicz(mid).netto < doceloweNetto) min = mid; else max = mid;
   }
   return Math.round((min + max) / 2 * 100) / 100;
 }
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '0.625rem 0.875rem',
+  background: 'hsl(240,6%,10%)',
+  border: '1px solid hsl(240,4%,16%)',
+  borderRadius: '8px',
+  color: 'hsl(0,0%,98%)',
+  fontSize: '0.875rem',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  color: 'hsl(240,5%,55%)',
+  marginBottom: '0.375rem',
+  display: 'block',
+};
+
+const TRYBY = [
+  { value: 'miesiac_brutto', label: 'Brutto → netto' },
+  { value: 'miesiac_netto', label: 'Netto → brutto' },
+  { value: 'godzinowa', label: 'Stawka godzinowa' },
+  { value: 'roczna_brutto', label: 'Roczna brutto' },
+  { value: 'roczna_netto', label: 'Roczna netto' },
+];
+
+const UMOWY = [
+  { value: 'uop', label: 'Umowa o pracę' },
+  { value: 'zlecenie', label: 'Umowa zlecenie' },
+  { value: 'b2b', label: 'B2B' },
+];
 
 function Kalkulator() {
   const [trybWprowadzania, setTrybWprowadzania] = useState<TrybWprowadzania>('miesiac_brutto');
@@ -136,6 +162,13 @@ function Kalkulator() {
   const [typB2B, setTypB2B] = useState<TypB2B>('liniowy');
   const [typZUSB2B, setTypZUSB2B] = useState<TypZUSB2B>('normalny');
   const [stawkaRyczaltu, setStawkaRyczaltu] = useState(0.12);
+  const [zapisywanie, setZapisywanie] = useState(false);
+  const [zapisano, setZapisano] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const focusStyle = (field: string): React.CSSProperties => ({
+    borderColor: focusedField === field ? 'hsl(217,91%,60%)' : 'hsl(240,4%,16%)',
+  });
 
   const obliczDlaTypu = (brutto: number): Wynik => {
     if (typUmowy === 'uop') return obliczUoP(brutto, ulgaMlodych);
@@ -147,168 +180,259 @@ function Kalkulator() {
   const oblicz = (): Wynik | null => {
     const val = parseFloat(wartosc);
     if (!val || val <= 0) return null;
-
     let brutto = val;
-
-    if (trybWprowadzania === 'miesiac_brutto') {
-      brutto = val;
-    } else if (trybWprowadzania === 'miesiac_netto') {
-      brutto = znajdzBrutto(val, obliczDlaTypu);
-    } else if (trybWprowadzania === 'godzinowa') {
-      const godz = parseFloat(godziny) || 168;
-      brutto = val * godz;
-    } else if (trybWprowadzania === 'roczna_brutto') {
-      brutto = val / 12;
-    } else if (trybWprowadzania === 'roczna_netto') {
-      brutto = znajdzBrutto(val / 12, obliczDlaTypu);
-    }
-
-    const wynikMiesieczny = obliczDlaTypu(brutto);
-    return wynikMiesieczny;
+    if (trybWprowadzania === 'miesiac_netto') brutto = znajdzBrutto(val, obliczDlaTypu);
+    else if (trybWprowadzania === 'godzinowa') brutto = val * (parseFloat(godziny) || 168);
+    else if (trybWprowadzania === 'roczna_brutto') brutto = val / 12;
+    else if (trybWprowadzania === 'roczna_netto') brutto = znajdzBrutto(val / 12, obliczDlaTypu);
+    return obliczDlaTypu(brutto);
   };
 
   const wynik = oblicz();
 
+  const zapiszDoProfilu = async () => {
+    if (!wynik) return;
+    setZapisywanie(true);
+    await fetch('http://localhost:5000/api/profil', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+      body: JSON.stringify({ dochod_netto: Math.round(wynik.netto) }),
+    });
+    setZapisywanie(false);
+    setZapisano(true);
+    setTimeout(() => setZapisano(false), 3000);
+  };
+
   const labelWartosci = () => {
     switch (trybWprowadzania) {
       case 'miesiac_brutto': return 'Miesięczna brutto (zł)';
-      case 'miesiac_netto': return 'Miesięczna netto (zł) — oblicz brutto';
+      case 'miesiac_netto': return 'Miesięczna netto (zł)';
       case 'godzinowa': return 'Stawka godzinowa brutto (zł)';
       case 'roczna_brutto': return 'Roczna brutto (zł)';
-      case 'roczna_netto': return 'Roczna netto (zł) — oblicz brutto';
+      case 'roczna_netto': return 'Roczna netto (zł)';
     }
   };
 
+  const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
+
   return (
-    <div className="karta">
-      <h2>Kalkulator Wynagrodzeń</h2>
-
-      <div className="formularz">
-        <label>Tryb wprowadzania</label>
-        <select value={trybWprowadzania} onChange={(e) => setTrybWprowadzania(e.target.value as TrybWprowadzania)}>
-          <option value="miesiac_brutto">Miesięczna brutto → netto</option>
-          <option value="miesiac_netto">Miesięczna netto → brutto</option>
-          <option value="godzinowa">Stawka godzinowa</option>
-          <option value="roczna_brutto">Roczna brutto → netto</option>
-          <option value="roczna_netto">Roczna netto → brutto</option>
-        </select>
-
-        <label>{labelWartosci()}</label>
-        <input
-          type="number"
-          value={wartosc}
-          onChange={(e) => setWartosc(e.target.value)}
-          placeholder="np. 5000"
-        />
-
-        {trybWprowadzania === 'godzinowa' && (
-          <>
-            <label>Liczba godzin w miesiącu</label>
-            <input
-              type="number"
-              value={godziny}
-              onChange={(e) => setGodziny(e.target.value)}
-              placeholder="np. 168"
-            />
-          </>
-        )}
-
-        <label>Typ umowy</label>
-        <select value={typUmowy} onChange={(e) => setTypUmowy(e.target.value as TypUmowy)}>
-          <option value="uop">Umowa o pracę</option>
-          <option value="zlecenie">Umowa zlecenie</option>
-          <option value="b2b">B2B</option>
-        </select>
-
-        {typUmowy === 'uop' && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={ulgaMlodych} onChange={(e) => setUlgaMlodych(e.target.checked)} />
-            Ulga dla młodych (do 26 lat, do 85 528 zł/rok)
-          </label>
-        )}
-
-        {typUmowy === 'zlecenie' && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={studentDoLat26} onChange={(e) => setStudentDoLat26(e.target.checked)} />
-            Student lub osoba do 26 lat (brak ZUS i PIT)
-          </label>
-        )}
-
-        {typUmowy === 'b2b' && (
-          <>
-            <label>Forma opodatkowania</label>
-            <select value={typB2B} onChange={(e) => setTypB2B(e.target.value as TypB2B)}>
-              <option value="liniowy">Podatek liniowy (19%)</option>
-              <option value="ryczalt">Ryczałt ewidencjonowany</option>
-            </select>
-
-            {typB2B === 'ryczalt' && (
-              <>
-                <label>Stawka ryczałtu</label>
-                <select value={stawkaRyczaltu} onChange={(e) => setStawkaRyczaltu(parseFloat(e.target.value))}>
-                  {STAWKI_RYCZALTU.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            <label>Składki ZUS</label>
-            <select value={typZUSB2B} onChange={(e) => setTypZUSB2B(e.target.value as TypZUSB2B)}>
-              <option value="ulga_na_start">Ulga na start (~0 zł, pierwsze 6 mies.)</option>
-              <option value="preferencyjny">Preferencyjny (~403 zł, pierwsze 2 lata)</option>
-              <option value="normalny">Normalny (~1 648 zł)</option>
-            </select>
-          </>
-        )}
+    <div style={{ maxWidth: '780px' }}>
+      {/* Nagłówek */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'hsl(0,0%,98%)', letterSpacing: '-0.02em', margin: 0 }}>
+          Kalkulator wynagrodzeń
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,55%)', marginTop: '0.25rem' }}>
+          Oblicz wynagrodzenie netto dla różnych typów umów
+        </p>
       </div>
 
-      {wynik && (
-        <div className="wyniki">
-          <div className="wynik-główny">
-            <span>Netto na konto (miesięcznie)</span>
-            <strong>{wynik.netto.toFixed(2)} zł</strong>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'start' }}>
+        {/* Lewa kolumna — parametry */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Tryb wprowadzania */}
+          <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.25rem' }}>
+            <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(240,5%,55%)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+              Tryb obliczeń
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+              {TRYBY.map(t => (
+                <button
+                  key={t.value}
+                  onClick={() => setTrybWprowadzania(t.value as TrybWprowadzania)}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: trybWprowadzania === t.value ? 'hsl(217,91%,60%)' : 'hsl(240,6%,12%)',
+                    color: trybWprowadzania === t.value ? '#fff' : 'hsl(240,5%,65%)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {(trybWprowadzania === 'miesiac_netto' || trybWprowadzania === 'roczna_netto' || trybWprowadzania === 'godzinowa' || trybWprowadzania === 'roczna_brutto') && (
-            <div className="wynik-szczegoly" style={{ marginBottom: '1rem' }}>
-              <p>Brutto miesięcznie: <span>{wynik.brutto.toFixed(2)} zł</span></p>
-              <p>Brutto rocznie: <span>{(wynik.brutto * 12).toFixed(2)} zł</span></p>
-              <p>Netto rocznie: <span>{(wynik.netto * 12).toFixed(2)} zł</span></p>
+          {/* Kwota */}
+          <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            <div>
+              <label style={labelStyle}>{labelWartosci()}</label>
+              <input
+                type="number" value={wartosc} onChange={e => setWartosc(e.target.value)}
+                placeholder="np. 5000"
+                style={{ ...inputStyle, ...focusStyle('wartosc') }}
+                onFocus={() => setFocusedField('wartosc')} onBlur={() => setFocusedField(null)}
+              />
             </div>
-          )}
-
-          {wynik.uwagi.length > 0 && (
-            <div className="uwagi">
-              {wynik.uwagi.map((u, i) => <p key={i}>ℹ️ {u}</p>)}
-            </div>
-          )}
-
-          <div className="wynik-szczegoly">
-            {wynik.skladki.map((s, i) => (
-              <p key={i}>{s.nazwa}: <span>{s.kwota.toFixed(2)} zł</span></p>
-            ))}
+            {trybWprowadzania === 'godzinowa' && (
+              <div>
+                <label style={labelStyle}>Godziny w miesiącu</label>
+                <input
+                  type="number" value={godziny} onChange={e => setGodziny(e.target.value)}
+                  placeholder="168"
+                  style={{ ...inputStyle, ...focusStyle('godziny') }}
+                  onFocus={() => setFocusedField('godziny')} onBlur={() => setFocusedField(null)}
+                />
+              </div>
+            )}
           </div>
 
-          <button
-            className="przycisk-dodaj"
-            style={{ marginTop: '1rem' }}
-            onClick={async () => {
-              await fetch('http://localhost:5000/api/profil', {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-                },
-                body: JSON.stringify({ dochod_netto: Math.round(wynik.netto) }),
-              });
-              alert(`Zapisano ${wynik.netto.toFixed(2)} zł jako dochód netto w profilu`);
-            }}
-          >
-            Zapisz jako dochód do profilu
-          </button>
+          {/* Typ umowy */}
+          <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.25rem' }}>
+            <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(240,5%,55%)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+              Typ umowy
+            </p>
+            <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '0.875rem' }}>
+              {UMOWY.map(u => (
+                <button
+                  key={u.value}
+                  onClick={() => setTypUmowy(u.value as TypUmowy)}
+                  style={{
+                    flex: 1, padding: '0.5rem', borderRadius: '6px', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', border: 'none',
+                    background: typUmowy === u.value ? 'hsl(217,91%,60%)' : 'hsl(240,6%,12%)',
+                    color: typUmowy === u.value ? '#fff' : 'hsl(240,5%,65%)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+
+            {typUmowy === 'uop' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'hsl(240,5%,65%)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={ulgaMlodych} onChange={e => setUlgaMlodych(e.target.checked)} style={{ accentColor: 'hsl(217,91%,60%)' }} />
+                Ulga dla młodych (do 26 lat)
+              </label>
+            )}
+
+            {typUmowy === 'zlecenie' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'hsl(240,5%,65%)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={studentDoLat26} onChange={e => setStudentDoLat26(e.target.checked)} style={{ accentColor: 'hsl(217,91%,60%)' }} />
+                Student / osoba do 26 lat
+              </label>
+            )}
+
+            {typUmowy === 'b2b' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <label style={labelStyle}>Forma opodatkowania</label>
+                  <select value={typB2B} onChange={e => setTypB2B(e.target.value as TypB2B)} style={selectStyle}>
+                    <option value="liniowy">Podatek liniowy (19%)</option>
+                    <option value="ryczalt">Ryczałt ewidencjonowany</option>
+                  </select>
+                </div>
+                {typB2B === 'ryczalt' && (
+                  <div>
+                    <label style={labelStyle}>Stawka ryczałtu</label>
+                    <select value={stawkaRyczaltu} onChange={e => setStawkaRyczaltu(parseFloat(e.target.value))} style={selectStyle}>
+                      {STAWKI_RYCZALTU.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label style={labelStyle}>Składki ZUS</label>
+                  <select value={typZUSB2B} onChange={e => setTypZUSB2B(e.target.value as TypZUSB2B)} style={selectStyle}>
+                    <option value="ulga_na_start">Ulga na start (~0 zł)</option>
+                    <option value="preferencyjny">Preferencyjny (~403 zł)</option>
+                    <option value="normalny">Normalny (~1 648 zł)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Prawa kolumna — wyniki */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {wynik ? (
+            <>
+              {/* Główny wynik */}
+              <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.5rem' }}>
+                <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(240,5%,55%)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                  Netto miesięcznie
+                </p>
+                <p style={{ fontSize: '2.25rem', fontWeight: 700, color: 'hsl(142,71%,55%)', letterSpacing: '-0.03em', margin: 0 }}>
+                  {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(wynik.netto)}
+                </p>
+                {(trybWprowadzania !== 'miesiac_brutto') && (
+                  <p style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,55%)', marginTop: '0.5rem' }}>
+                    Brutto: {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(wynik.brutto)}
+                  </p>
+                )}
+              </div>
+
+              {/* Roczne */}
+              <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginBottom: '0.25rem' }}>Rocznie netto</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: 'hsl(0,0%,98%)' }}>
+                    {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(wynik.netto * 12)}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(240,5%,55%)', marginBottom: '0.25rem' }}>Rocznie brutto</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: 'hsl(0,0%,98%)' }}>
+                    {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(wynik.brutto * 12)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Składki */}
+              <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '1.25rem' }}>
+                <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(240,5%,55%)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.875rem' }}>
+                  Odliczenia
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                  {wynik.skladki.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(240,5%,60%)' }}>{s.nazwa}</span>
+                      <span style={{ fontSize: '0.8125rem', color: 'hsl(0,72%,60%)', fontWeight: 500 }}>
+                        -{s.kwota.toFixed(2)} zł
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Uwagi */}
+              {wynik.uwagi.length > 0 && (
+                <div style={{ padding: '0.875rem 1rem', background: 'hsl(217,60%,10%)', border: '1px solid hsl(217,60%,18%)', borderRadius: '8px', display: 'flex', gap: '0.5rem' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(217,91%,70%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span style={{ fontSize: '0.8125rem', color: 'hsl(217,91%,70%)' }}>{wynik.uwagi[0]}</span>
+                </div>
+              )}
+
+              {/* Zapisz do profilu */}
+              <button
+                onClick={zapiszDoProfilu}
+                disabled={zapisywanie}
+                style={{
+                  padding: '0.625rem 1rem', background: 'hsl(240,6%,12%)', border: '1px solid hsl(240,4%,18%)',
+                  borderRadius: '8px', color: 'hsl(0,0%,85%)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
+                  opacity: zapisywanie ? 0.6 : 1, transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (!zapisywanie) e.currentTarget.style.background = 'hsl(217,91%,60%)'; }}
+                onMouseLeave={e => e.currentTarget.style.background = 'hsl(240,6%,12%)'}
+              >
+                {zapisano ? '✓ Zapisano do profilu' : 'Zapisz jako dochód do profilu'}
+              </button>
+            </>
+          ) : (
+            <div style={{ background: 'hsl(240,6%,7%)', border: '1px solid hsl(240,4%,13%)', borderRadius: '12px', padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.875rem', color: 'hsl(240,5%,35%)' }}>Wpisz kwotę, aby zobaczyć wynik</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
