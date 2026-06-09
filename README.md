@@ -28,7 +28,3 @@ A Polish personal finance planning app. Track expenses, set savings goals, calcu
 - Savings goals with progress tracking
 - "Can I afford it?" calculator (cash & loan modes)
 - Onboarding flow, JWT auth, user profile
-
-## Running Locally
-
-### Backend
