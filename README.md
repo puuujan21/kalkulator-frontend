@@ -28,3 +28,7 @@ A Polish personal finance planning app. Track expenses, set savings goals, calcu
 - Savings goals with progress tracking
 - "Can I afford it?" calculator (cash & loan modes)
 - Onboarding flow, JWT auth, user profile
+
+## Built with
+
+This project was built with the assistance of [Claude Code](https://claude.ai/code) by Anthropic.
